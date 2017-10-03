@@ -62,6 +62,9 @@ function handleGet(req, res){
 			if (scope === "user") {
 				fulfill(new MODEL(prefs || null));
 			}
+			if (scope === "workspace") {
+				fulfill(new MODEL(prefs || null));
+			}
 			// TODO wrap workspace preference
 		});
 	}).then(function(prefs){
@@ -93,6 +96,9 @@ function handlePut(req, res){
 				return reject(err);
 			}
 			if (scope === "user") {
+				fulfill(new MODEL(prefs || null));
+			}
+			if (scope === "workspace") {
 				fulfill(new MODEL(prefs || null));
 			}
 			// TODO wrap workspace preference
@@ -147,6 +153,9 @@ function handleDelete(req, res){
 				return reject(err);
 			}
 			if (scope === "user") {
+				fulfill(new MODEL(prefs || null));
+			}
+			if (scope === "workspace") {
 				fulfill(new MODEL(prefs || null));
 			}
 			// TODO wrap workspace preference
@@ -210,7 +219,7 @@ function read(req, res, callback){
 			callback(err, scope, data ? data.properties : null);
 		});
 	} else if (scope === "workspace") {
-		store.getWorkspace(req.user.workspaceId, function(err, data) {
+		store.getWorkspace(req.user.workspaces[0], function(err, data) {
 			callback(err, scope, data ? data.properties : null);
 		});
 	} else if (scope === "project") {
@@ -228,7 +237,7 @@ function update(req, prefs, callback){
 			callback(err);
 		});
 	}else if(scope === "workspace"){
-		store.updateWorkspace(req.user.workspaceId, {properties:prefs}, function(err){
+		store.updateWorkspace(req.user.workspaces[0], {properties:prefs}, function(err){
 			callback(err);
 		});
 	}else if(scope === "project"){

@@ -57,6 +57,7 @@ define([
 	'orion/bidiUtils',
 	'orion/customGlobalCommands',
 	'orion/generalPreferences',
+	'orion/workspaceTabPreferences',
 	'orion/breadcrumbs',
 	'orion/keyBinding',
 	'orion/urlModifier',
@@ -68,7 +69,7 @@ define([
 	mTextModelFactory, mUndoStack,
 	mFolderView, mEditorView, mPluginEditorView , mMarkdownView, mMarkdownEditor,
 	mCommandRegistry, mContentTypes, mFileClient, mFileCommands, mEditorCommands, mSelection, mStatus, mProgress, mOperationsClient, mGitClient, mSshTools, mOutliner, mDialogs, mExtensionCommands, ProjectCommands, mSearchClient,
-	EventTarget, URITemplate, i18nUtil, PageUtil, util, objects, lib, Deferred, mProjectClient, mSplitter, mTooltip, mContextMenu, mMenuBar, bidiUtils, mCustomGlobalCommands, mGeneralPrefs, mBreadcrumbs, mKeyBinding, urlModifier,
+	EventTarget, URITemplate, i18nUtil, PageUtil, util, objects, lib, Deferred, mProjectClient, mSplitter, mTooltip, mContextMenu, mMenuBar, bidiUtils, mCustomGlobalCommands, mGeneralPrefs, mWorkspaceTabPrefs, mBreadcrumbs, mKeyBinding, urlModifier,
 	mBreakpoint, mAnnotations, mDebugService
 ) {
 
@@ -267,6 +268,8 @@ function TabWidget(options) {
 	this.selectedFile = null;
 	this.tabWidgetContextItemindex = 1;
 	this.commandRegistry = options.commandRegistry;
+	this.preferences = options.preferences;
+	this.workspaceTabPrefs = new mWorkspaceTabPrefs.WorkspaceTabPreferences(this.preferences);
 	
 	this.fileList = [];
 	this.editorTabs = {};
@@ -463,19 +466,35 @@ objects.mixin(TabWidget.prototype, {
 				return {metadata: {Location: f.metadata.Location, Name: f.metadata.Name, WorkspaceLocation: f.metadata.WorkspaceLocation, Directory: f.metadata.Directory, Parents: parents}, href: f.href, isTransient: f.isTransient};
 			}
 		});
+		if(mappedFiles) {
+			this.workspaceTabPrefs.setPrefs(mappedFiles);
+		}
 		sessionStorage["editorTabs_" + this.id] = JSON.stringify(mappedFiles);
 	},
 	restoreTabsFromStorage: function() {
-		if (sessionStorage.hasOwnProperty("editorTabs_" + this.id)) {
-			try {
-				var cachedTabs = JSON.parse(sessionStorage["editorTabs_" + this.id]);
+//		var cachedTabs;
+//		if (sessionStorage.hasOwnProperty("editorTabs_" + this.id)) {
+//			try {
+//				cachedTabs = JSON.parse(sessionStorage["editorTabs_" + this.id]);
+//				useCachedTabs(cachedTabs);
+//			} catch (e) {
+//				delete sessionStorage["editorTabs_" + this.id];
+//			}
+//		} else {
+//			this.workspaceTabPrefs.getPrefs().then(function(prefs){
+//				useCachedTabs(prefs);
+//			});
+//		}
+		this.workspaceTabPrefs.getPrefs().then(function(prefs){
+			useCachedTabs.bind(this)(prefs);
+		}.bind(this));
+		function useCachedTabs(cachedTabs){
+			if(cachedTabs && cachedTabs.length > 0) {
 				cachedTabs.reverse().forEach(function(cachedTab) {
 					if (cachedTab) {
 						this.addTab(cachedTab.metadata, cachedTab.href, true, cachedTab.isTransient);
 					}
 				}.bind(this));
-			} catch (e) {
-				delete sessionStorage["editorTabs_" + this.id];
 			}
 		}
 	},
@@ -1056,6 +1075,7 @@ objects.mixin(EditorViewer.prototype, {
 		this.tabWidget = new TabWidget({
 			parent: this.headerNode,
 			commandRegistry: this.commandRegistry,
+			preferences: this.preferences,
 			id: this.id,
 			fileClient: this.fileClient,
 			generalPreferences: this.generalPreferences,

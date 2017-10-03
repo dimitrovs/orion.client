@@ -48,13 +48,6 @@ function getWorkspaceMetadataFileName(options, workspaceId) {
 	return nodePath.join(metadataFolder, workspaceId + ".json");
 }
 
-function getWorkspaceFolderName(options, workspaceId) {
-	var workspaceName = metaUtil.decodeWorkspaceNameFromWorkspaceId(workspaceId);
-	var userId = metaUtil.decodeUserIdFromWorkspaceId(workspaceId);
-	var metadataFolder = getUserRootLocation(options, userId);
-	return nodePath.join(metadataFolder, workspaceName);
-}
-
 function getProjectMetadataFileName(options, workspaceId, projectName) {
 	var userId = metaUtil.decodeUserIdFromWorkspaceId(workspaceId);
 	var metadataFolder = getUserRootLocation(options, userId);
@@ -73,6 +66,7 @@ function FsMetastore(options) {
 	this._taskList = {};
 	this._lockMap = {};
 	this._isSingleUser = options.configParams['orion.single.user'];
+	this._isElectron = options.configParams.isElectron;
 }
 
 FsMetastore.prototype.lock = function(userId, shared) {
@@ -250,7 +244,7 @@ Object.assign(FsMetastore.prototype, {
 	},
 
 	getWorkspace: function(workspaceId, callback) {
-		if (workspaceId !== WORKSPACE_ID) {
+//		if (workspaceId !== WORKSPACE_ID) {
 			var userId = metaUtil.decodeUserIdFromWorkspaceId(workspaceId);
 			Promise.using(this.lock(userId, true), function() {
 				return new Promise(function(resolve, reject) {
@@ -281,13 +275,13 @@ Object.assign(FsMetastore.prototype, {
 				},
 				callback /* error case */
 			);
-		} else {
-			// TODO this should be merged into upper logic
-			callback(null, {
-				name: nodePath.basename(this._options.workspaceDir),
-				id: WORKSPACE_ID
-			});
-		}
+//		} else {
+//			// TODO this should be merged into upper logic
+//			callback(null, {
+//				name: nodePath.basename(this._options.workspaceDir),
+//				id: WORKSPACE_ID
+//			});
+//		}
 	},
 
 	/** @callback */
@@ -589,6 +583,9 @@ Object.assign(FsMetastore.prototype, {
 	},
 	
 	createRenameDeleteProject: function(workspaceId, projectInfo) {
+		if (this._isElectron) {
+			return Promise.resolve();
+		} 
 		if (!workspaceId) {
 			return Promise.reject(new Error('workspace id is null'));
 		}
