@@ -453,7 +453,8 @@ objects.mixin(TabWidget.prototype, {
 		}
 	},
 	setTabStorage: function() {
-		var mappedFiles = this.fileList.map(function(f) {
+		var mappedFiles = [];
+		this.fileList.forEach(function(f) {
 			if (!f.metadata.Directory) {
 				var parents = f.metadata.Parents.map(function(each){
 					return {
@@ -463,31 +464,29 @@ objects.mixin(TabWidget.prototype, {
 						WorkspaceLocation: each.WorkspaceLocation
 					};
 				});
-				return {metadata: {Location: f.metadata.Location, Name: f.metadata.Name, WorkspaceLocation: f.metadata.WorkspaceLocation, Directory: f.metadata.Directory, Parents: parents}, href: f.href, isTransient: f.isTransient};
+				var fileInfo = {metadata: {Location: f.metadata.Location, Name: f.metadata.Name, WorkspaceLocation: f.metadata.WorkspaceLocation, Directory: f.metadata.Directory, Parents: parents}, href: f.href, isTransient: f.isTransient};
+				mappedFiles.push(fileInfo);
 			}
 		});
-		if(mappedFiles) {
+		if(mappedFiles && mappedFiles.length > 0) {
 			this.workspaceTabPrefs.setPrefs(mappedFiles);
+			sessionStorage["editorTabs_" + this.id] = JSON.stringify(mappedFiles);
 		}
-		sessionStorage["editorTabs_" + this.id] = JSON.stringify(mappedFiles);
 	},
 	restoreTabsFromStorage: function() {
-//		var cachedTabs;
-//		if (sessionStorage.hasOwnProperty("editorTabs_" + this.id)) {
-//			try {
-//				cachedTabs = JSON.parse(sessionStorage["editorTabs_" + this.id]);
-//				useCachedTabs(cachedTabs);
-//			} catch (e) {
-//				delete sessionStorage["editorTabs_" + this.id];
-//			}
-//		} else {
-//			this.workspaceTabPrefs.getPrefs().then(function(prefs){
-//				useCachedTabs(prefs);
-//			});
-//		}
-		this.workspaceTabPrefs.getPrefs().then(function(prefs){
-			useCachedTabs.bind(this)(prefs);
-		}.bind(this));
+		var cachedTabs;
+		if (sessionStorage.hasOwnProperty("editorTabs_" + this.id)) {
+			try {
+				cachedTabs = JSON.parse(sessionStorage["editorTabs_" + this.id]);
+				useCachedTabs.bind(this)(cachedTabs);
+			} catch (e) {
+				delete sessionStorage["editorTabs_" + this.id];
+			}
+		} else {
+			this.workspaceTabPrefs.getPrefs().then(function(prefs){
+				useCachedTabs.bind(this)(prefs);
+			}.bind(this));
+		}
 		function useCachedTabs(cachedTabs){
 			if(cachedTabs && cachedTabs.length > 0) {
 				cachedTabs.reverse().forEach(function(cachedTab) {
@@ -721,6 +720,7 @@ objects.mixin(TabWidget.prototype, {
 			// Add the file to our dropdown menu
 			this.fileList.unshift(fileToAdd);
 		} else if (!isRestoreTabsFromStorage && this.transientTab){
+		// Change transientTab when it's exist (delete and create a new one)
 			this.transientTab.fileNameNode.textContent = metadata.Name;
 			fileToAdd = {
 				callback: this.widgetClick,
@@ -775,7 +775,7 @@ objects.mixin(TabWidget.prototype, {
 			this.fileList.unshift(fileToAdd);
 		}
 		if(this.potentialTransientHref){
-			// In the case doubleclick event reveived before the transient tab is created, 
+			// In the case doubleclick event received before the transient tab is created, 
 			this.transientToPermanent(this.potentialTransientHref);
 			this.potentialTransientHref = null;
 		}
@@ -802,7 +802,9 @@ objects.mixin(TabWidget.prototype, {
 		} else {
 			editorTab.closeButtonNode.style.display = "none";
 		}
-		this.setTabStorage();
+		if(!isRestoreTabsFromStorage) {
+			this.setTabStorage();
+		}
 		return editorTab;
 	},
 	removeTab: function(metadata) {

@@ -219,7 +219,8 @@ function read(req, res, callback){
 			callback(err, scope, data ? data.properties : null);
 		});
 	} else if (scope === "workspace") {
-		store.getWorkspace(req.user.workspaces[0], function(err, data) {
+		var workspaceId = req.path.substring(16); //TODO there might be a risk, but the req.path should be exactly /workspace/tabs_WorkspacdID
+		store.getWorkspace(workspaceId, function(err, data) {
 			callback(err, scope, data ? data.properties : null);
 		});
 	} else if (scope === "project") {
@@ -237,7 +238,8 @@ function update(req, prefs, callback){
 			callback(err);
 		});
 	}else if(scope === "workspace"){
-		store.updateWorkspace(req.user.workspaces[0], {properties:prefs}, function(err){
+		var workspaceId = req.path.substring(16); //TODO there might be a risk, but the req.path should be exactly /workspace/tabs_WorkspacdID
+		store.updateWorkspace(workspaceId, {properties:prefs}, function(err){
 			callback(err);
 		});
 	}else if(scope === "project"){

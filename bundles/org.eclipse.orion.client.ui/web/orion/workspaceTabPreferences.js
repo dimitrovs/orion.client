@@ -19,7 +19,7 @@ define([
 ], function(objects, mCommonPreferences, util) {
 	var CommonPreferences = mCommonPreferences.CommonPreferences;
 
-	var GENERAL_SECTION = "/tabs"; //$NON-NLS-0$
+	var GENERAL_SECTION = "/tabs_"; //$NON-NLS-0$
 	var GENERAL_KEY = "tabsInfo"; //$NON-NLS-0$
 
 	var defaults = {};
@@ -33,7 +33,11 @@ define([
 			return defaults;
 		},
 		getPrefsSection: function() {
-			return GENERAL_SECTION;
+			var workspaceId = "";
+			if(window.location.hash) {
+				workspaceId = window.location.hash.substr(1).split("/")[2];
+			}
+			return GENERAL_SECTION + workspaceId;
 		},
 		getPrefsKey: function() {
 			return GENERAL_KEY;

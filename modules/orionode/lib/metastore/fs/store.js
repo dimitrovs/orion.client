@@ -244,44 +244,36 @@ Object.assign(FsMetastore.prototype, {
 	},
 
 	getWorkspace: function(workspaceId, callback) {
-//		if (workspaceId !== WORKSPACE_ID) {
-			var userId = metaUtil.decodeUserIdFromWorkspaceId(workspaceId);
-			Promise.using(this.lock(userId, true), function() {
-				return new Promise(function(resolve, reject) {
-					this._readWorkspaceMetadata(workspaceId, function(error, metadata) {
-						if (error) {
-							return reject(error);
-						}
-						if (!metadata) {
-							return resolve(null);
-						}
-						var workspace = {
-							"id": metadata.UniqueId,
-							"name": metadata.FullName,
-							"properties": {}
-						};
-						// TODO Workspace properties is where tabs info goes, implement later
-						var propertyKeys = Object.keys(metadata.Properties);
-						propertyKeys.forEach(function(propertyKey) {
-							workspace.properties[propertyKey] = metadata.Properties[propertyKey];
-							// TODO password needs to be handled specifically since it needs to be decrypted. (referrence setProperties line 967)
-						});
-						return resolve(workspace);
+		var userId = metaUtil.decodeUserIdFromWorkspaceId(workspaceId);
+		Promise.using(this.lock(userId, true), function() {
+			return new Promise(function(resolve, reject) {
+				this._readWorkspaceMetadata(workspaceId, function(error, metadata) {
+					if (error) {
+						return reject(error);
+					}
+					if (!metadata) {
+						return resolve(null);
+					}
+					var workspace = {
+						"id": metadata.UniqueId,
+						"name": metadata.FullName,
+						"properties": {}
+					};
+					// TODO Workspace properties is where tabs info goes, implement later
+					var propertyKeys = Object.keys(metadata.Properties);
+					propertyKeys.forEach(function(propertyKey) {
+						workspace.properties[propertyKey] = metadata.Properties[propertyKey];
+						// TODO password needs to be handled specifically since it needs to be decrypted. (referrence setProperties line 967)
 					});
-				}.bind(this));
-			}.bind(this)).then(
-				function(result) {
-					callback(null, result);
-				},
-				callback /* error case */
-			);
-//		} else {
-//			// TODO this should be merged into upper logic
-//			callback(null, {
-//				name: nodePath.basename(this._options.workspaceDir),
-//				id: WORKSPACE_ID
-//			});
-//		}
+					return resolve(workspace);
+				});
+			}.bind(this));
+		}.bind(this)).then(
+			function(result) {
+				callback(null, result);
+			},
+			callback /* error case */
+		);
 	},
 
 	/** @callback */
