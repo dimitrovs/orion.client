@@ -157,6 +157,7 @@ define(['require', 'orion/Deferred', 'orion/EventTarget', 'orion/xhr'], function
 
 	WorkspacePreferencesProvider.prototype = {
 		get: function(namespace, optForce) {
+			namespace = this._workspaceId + namespace;
 			if (this._currentPromises[namespace]) {
 				return this._currentPromises[namespace];
 			}
@@ -172,7 +173,7 @@ define(['require', 'orion/Deferred', 'orion/EventTarget', 'orion/xhr'], function
 			} else {
 				this._currentPromises[namespace] = d;
 				var that = this;
-				this._service.get(this._workspaceId, namespace).then(function(data) {
+				this._service.get(namespace).then(function(data) {
 					data = data || {};
 					that._cache.set(namespace, data);
 					delete that._currentPromises[namespace];
@@ -193,15 +194,17 @@ define(['require', 'orion/Deferred', 'orion/EventTarget', 'orion/xhr'], function
 		},
 		
 		put: function(namespace, data) {
+			namespace = this._workspaceId + namespace;
 			this._cache.set(namespace, data);
-			return this._service.put(this._workspaceId, namespace, data);
+			return this._service.put(namespace, data);
 		},
 		
 		remove: function(namespace, key){
+			namespace = this._workspaceId + namespace;
 			var cached = this._cache.get(namespace);
 			delete cached[key];
 			this._cache.set(namespace, cached);
-			return this._service.remove(this._workspaceId, namespace, key);
+			return this._service.remove(namespace, key);
 		}
 	};
 

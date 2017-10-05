@@ -344,12 +344,12 @@ objects.mixin(TabWidget.prototype, {
 		}
 		return metadata;
 	},
-	closeAllTabs: function() {
+	closeAllTabs: function(isNotSetInput) {
 		this.fileList.forEach(function(file){
-			this.closeTab(file.metadata, false, true, true);
+			this.closeTab(file.metadata, false, true, true, isNotSetInput);
 		}.bind(this));
 	},
-	closeTab: function(metadata, isDirty, notStoringCurrentStatus, force) {
+	closeTab: function(metadata, isDirty, notStoringCurrentStatus, force, isNotSetInput) {
 		if (!this.editorTabs.hasOwnProperty(metadata.Location)) {
 			return;
 		}
@@ -358,7 +358,7 @@ objects.mixin(TabWidget.prototype, {
 		var href = editorTab.href;
 
 		var tabClose = function() {
-			this.removeTab(metadata, notStoringCurrentStatus, force);
+			this.removeTab(metadata, notStoringCurrentStatus, force, isNotSetInput);
 			var evt = {
 				type: "TabClosed",
 				resource: metadata.Location
@@ -474,7 +474,7 @@ objects.mixin(TabWidget.prototype, {
 			this.workspaceTabPrefs.setPrefs(mappedFiles);
 		}
 	},
-	restoreTabsFromWSPrefs: function() {
+	restoreTabsFromWSPrefs: function(callback) {
 		this.workspaceTabPrefs.getPrefs().then(function(prefs){
 			if(prefs && prefs.length > 0) {
 				prefs.reverse().forEach(function(cachedTab) {
@@ -482,6 +482,8 @@ objects.mixin(TabWidget.prototype, {
 						this.addTab(cachedTab.metadata, cachedTab.href, true, cachedTab.isTransient);
 					}
 				}.bind(this));
+			} else {
+				callback();
 			}
 		}.bind(this));
 	},
@@ -795,7 +797,7 @@ objects.mixin(TabWidget.prototype, {
 		}
 		return editorTab;
 	},
-	removeTab: function(metadata, notStoringCurrentStatus, force) {
+	removeTab: function(metadata, notStoringCurrentStatus, force, isNotSetInput) {
 		// Currently there is no support for an editor to be opened that does not have
 		// an associated file.
 		if (!force && this.fileList.length === 1) { // force === true is the case where we don't care the length of fileList
@@ -830,7 +832,7 @@ objects.mixin(TabWidget.prototype, {
 			closeButton.style.display = "none";
 		}
 
-		if (lastHref !== this.selectedFile.href) {
+		if (lastHref !== this.selectedFile.href && !isNotSetInput) {
 			this.activateEditorViewer();
 			this.setWindowLocation(this.selectedFile.href);
 		}
@@ -1134,19 +1136,24 @@ objects.mixin(EditorViewer.prototype, {
 		});	
 		inputManager.addEventListener("InputChanged", function(evt) { //$NON-NLS-0$
 			var metadata = evt.metadata;
-			var workspaceId = evt.metadata.Id || (inputManager.getWorkspace() && inputManager.getWorkspace().Id);
-			if(typeof this.tabWidget.workspaceTabPrefs.getWorkspaceId() === 'undefined' || this.tabWidget.workspaceTabPrefs.getWorkspaceId() !== workspaceId) {
-				this.tabWidget.closeAllTabs();
-				this.tabWidget.workspaceTabPrefs.setWorkspaceId(workspaceId);
-				this.tabWidget.restoreTabsFromWSPrefs();
-			}
 			if (metadata) {
 				var tabHref = this.activateContext.computeNavigationHref(evt.metadata);
+			}
+			var workspaceId = evt.metadata.Id || (inputManager.getWorkspace() && inputManager.getWorkspace().Id);
+			if(typeof this.tabWidget.workspaceTabPrefs.getWorkspaceId() === 'undefined' || this.tabWidget.workspaceTabPrefs.getWorkspaceId() !== workspaceId) {
+				this.tabWidget.closeAllTabs(true);
+				this.tabWidget.workspaceTabPrefs.setWorkspaceId(workspaceId);
+				this.tabWidget.restoreTabsFromWSPrefs(function(){
+					this.tabWidget.addTab(metadata, tabHref);
+				}.bind(this));
+			} else if(metadata) {
+				this.tabWidget.addTab(metadata, tabHref);
+			}
+			if (metadata) {
 				var lastFile = PageUtil.hash();
 				if (lastFile  === "#" + metadata.Location){
 					sessionStorage.lastFile = lastFile;
 				}
-				this.tabWidget.addTab(metadata, tabHref);
 			} else {
 				delete sessionStorage.lastFile;
 			}
