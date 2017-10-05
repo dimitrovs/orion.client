@@ -60,17 +60,19 @@ function handleGet(req, res){
 				return reject(err);
 			}
 			if (scope === "user") {
-				fulfill(new MODEL(prefs || null));
+				return fulfill([new MODEL(prefs || null), scope]);
 			}
 			if (scope === "workspace") {
-				fulfill(new MODEL(prefs || null));
+				return fulfill([new MODEL(prefs || null), scope]);
 			}
 			// TODO wrap workspace preference
 		});
-	}).then(function(prefs){
+	}).then(function(values){
+		var prefs = values[0], scope = values[1];
 		var urlObj = req._parsedUrl || nodeUrl.parse(req.url),
-			prefPath = urlObj.pathname.split("/").slice(2).join("/");
-		var node = prefs.get(prefPath);
+			prefPathSegs = urlObj.pathname.split("/").slice(scope === "workspace" ? 3 : 2),
+			prefPath = prefPathSegs.join("/"),
+			node = prefs.get(prefPath);
 		var key = req.query.key;
 		if (typeof key !== 'string') {
 			// No key param - a whole node was requested
@@ -96,16 +98,18 @@ function handlePut(req, res){
 				return reject(err);
 			}
 			if (scope === "user") {
-				fulfill(new MODEL(prefs || null));
+				return fulfill([new MODEL(prefs || null), scope]);
 			}
 			if (scope === "workspace") {
-				fulfill(new MODEL(prefs || null));
+				return fulfill([new MODEL(prefs || null), scope]);
 			}
 			// TODO wrap workspace preference
 		});
-	}).then(function(prefs){
+	}).then(function(values){
+		var prefs = values[0], scope = values[1];
 		var urlObj = req._parsedUrl || nodeUrl.parse(req.url),
-			prefPath = urlObj.pathname.split("/").slice(2).join("/"),
+			prefPathSegs = urlObj.pathname.split("/").slice(scope === "workspace" ? 3 : 2),
+			prefPath = prefPathSegs.join("/"),
 			prefNode = prefs.get(prefPath);
 		var body = req.body;
 		if(prefPath !== "operations"){
@@ -153,16 +157,18 @@ function handleDelete(req, res){
 				return reject(err);
 			}
 			if (scope === "user") {
-				fulfill(new MODEL(prefs || null));
+				return fulfill([new MODEL(prefs || null), scope]);
 			}
 			if (scope === "workspace") {
-				fulfill(new MODEL(prefs || null));
+				return fulfill([new MODEL(prefs || null), scope]);
 			}
 			// TODO wrap workspace preference
 		});
-	}).then(function(prefs){
+	}).then(function(values){
+		var prefs = values[0], scope = values[1];
 		var urlObj = req._parsedUrl || nodeUrl.parse(req.url),
-			prefPath = urlObj.pathname.split("/").slice(2).join("/"),
+			prefPathSegs = urlObj.pathname.split("/").slice(scope === "workspace" ? 3 : 2),
+			prefPath = prefPathSegs.join("/"),
 			node = prefs.get(prefPath);
 		if (node === NOT_EXIST) {
 			// Deleting a nonexistent node (or some key therein), noop
@@ -219,7 +225,7 @@ function read(req, res, callback){
 			callback(err, scope, data ? data.properties : null);
 		});
 	} else if (scope === "workspace") {
-		var workspaceId = req.path.substring(16); //TODO there might be a risk, but the req.path should be exactly /workspace/tabs_WorkspacdID
+		var workspaceId = req.params[0].split("/")[2];
 		store.getWorkspace(workspaceId, function(err, data) {
 			callback(err, scope, data ? data.properties : null);
 		});
@@ -238,7 +244,7 @@ function update(req, prefs, callback){
 			callback(err);
 		});
 	}else if(scope === "workspace"){
-		var workspaceId = req.path.substring(16); //TODO there might be a risk, but the req.path should be exactly /workspace/tabs_WorkspacdID
+		var workspaceId = req.params[0].split("/")[2];
 		store.updateWorkspace(workspaceId, {properties:prefs}, function(err){
 			callback(err);
 		});

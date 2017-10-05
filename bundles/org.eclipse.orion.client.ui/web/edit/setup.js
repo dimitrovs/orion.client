@@ -303,12 +303,9 @@ function TabWidget(options) {
 	tabWidgetDropdownNode.setAttribute("aria-haspopup", "true");
 
 	this.parent.appendChild(tabWidgetDropdownNode);
-
 	if (this.enableEditorTabs) {
 		this.createDropdown_();
 	}
-	
-	this.restoreTabsFromStorage(); // have to be after createDropdown_ call.
 }
 
 TabWidget.prototype = {};
@@ -347,7 +344,12 @@ objects.mixin(TabWidget.prototype, {
 		}
 		return metadata;
 	},
-	closeTab: function(metadata, isDirty) {
+	closeAllTabs: function() {
+		this.fileList.forEach(function(file){
+			this.closeTab(file.metadata, false, true, true);
+		}.bind(this));
+	},
+	closeTab: function(metadata, isDirty, notStoringCurrentStatus, force) {
 		if (!this.editorTabs.hasOwnProperty(metadata.Location)) {
 			return;
 		}
@@ -356,7 +358,7 @@ objects.mixin(TabWidget.prototype, {
 		var href = editorTab.href;
 
 		var tabClose = function() {
-			this.removeTab(metadata);
+			this.removeTab(metadata, notStoringCurrentStatus, force);
 			var evt = {
 				type: "TabClosed",
 				resource: metadata.Location
@@ -470,32 +472,18 @@ objects.mixin(TabWidget.prototype, {
 		});
 		if(mappedFiles && mappedFiles.length > 0) {
 			this.workspaceTabPrefs.setPrefs(mappedFiles);
-			sessionStorage["editorTabs_" + this.id] = JSON.stringify(mappedFiles);
 		}
 	},
-	restoreTabsFromStorage: function() {
-		var cachedTabs;
-		if (sessionStorage.hasOwnProperty("editorTabs_" + this.id)) {
-			try {
-				cachedTabs = JSON.parse(sessionStorage["editorTabs_" + this.id]);
-				useCachedTabs.bind(this)(cachedTabs);
-			} catch (e) {
-				delete sessionStorage["editorTabs_" + this.id];
-			}
-		} else {
-			this.workspaceTabPrefs.getPrefs().then(function(prefs){
-				useCachedTabs.bind(this)(prefs);
-			}.bind(this));
-		}
-		function useCachedTabs(cachedTabs){
-			if(cachedTabs && cachedTabs.length > 0) {
-				cachedTabs.reverse().forEach(function(cachedTab) {
+	restoreTabsFromWSPrefs: function() {
+		this.workspaceTabPrefs.getPrefs().then(function(prefs){
+			if(prefs && prefs.length > 0) {
+				prefs.reverse().forEach(function(cachedTab) {
 					if (cachedTab) {
 						this.addTab(cachedTab.metadata, cachedTab.href, true, cachedTab.isTransient);
 					}
 				}.bind(this));
 			}
-		}
+		}.bind(this));
 	},
 	registerAdditionalCommands: function() {
 		var showTabDropdown = new mCommands.Command({
@@ -807,10 +795,10 @@ objects.mixin(TabWidget.prototype, {
 		}
 		return editorTab;
 	},
-	removeTab: function(metadata) {
+	removeTab: function(metadata, notStoringCurrentStatus, force) {
 		// Currently there is no support for an editor to be opened that does not have
 		// an associated file.
-		if (this.fileList.length === 1) {
+		if (!force && this.fileList.length === 1) { // force === true is the case where we don't care the length of fileList
 			return;
 		}
 
@@ -846,7 +834,9 @@ objects.mixin(TabWidget.prototype, {
 			this.activateEditorViewer();
 			this.setWindowLocation(this.selectedFile.href);
 		}
-		this.setTabStorage();
+		if(!notStoringCurrentStatus) {
+			this.setTabStorage();
+		}
 	},
 	scrollToTab: function(tab) {
 		var sib = tab.previousSibling;
@@ -1144,6 +1134,12 @@ objects.mixin(EditorViewer.prototype, {
 		});	
 		inputManager.addEventListener("InputChanged", function(evt) { //$NON-NLS-0$
 			var metadata = evt.metadata;
+			var workspaceId = evt.metadata.Id || (inputManager.getWorkspace() && inputManager.getWorkspace().Id);
+			if(typeof this.tabWidget.workspaceTabPrefs.getWorkspaceId() === 'undefined' || this.tabWidget.workspaceTabPrefs.getWorkspaceId() !== workspaceId) {
+				this.tabWidget.closeAllTabs();
+				this.tabWidget.workspaceTabPrefs.setWorkspaceId(workspaceId);
+				this.tabWidget.restoreTabsFromWSPrefs();
+			}
 			if (metadata) {
 				var tabHref = this.activateContext.computeNavigationHref(evt.metadata);
 				var lastFile = PageUtil.hash();
@@ -1162,6 +1158,7 @@ objects.mixin(EditorViewer.prototype, {
 			this.pool.metadata = metadata;
 			
 			var editorView = this.getCurrentEditorView();
+			
 			if (editorView && editorView.editor) {
 				this.editor.isFileInitiallyLoaded = false;
 				var textView = editorView.editor.getTextView();

@@ -15,8 +15,8 @@ define(["orion/xhr", "orion/plugin", "domReady!"], function(xhr, PluginProvider)
 	}
 
 	PreferencesProvider.prototype = {
-		get: function(name) {
-			return xhr("GET", this.location + name, {
+		get: function(id, name) {
+			return xhr("GET", this.location + "/" + id + name, {
 				headers: {
 					"Orion-Version": "1"
 				},
@@ -26,8 +26,8 @@ define(["orion/xhr", "orion/plugin", "domReady!"], function(xhr, PluginProvider)
 				return result.response ? JSON.parse(result.response) : null;
 			});
 		},
-		put: function(name, data) {
-			return xhr("PUT", this.location + name, {
+		put: function(id, name, data) {
+			return xhr("PUT", this.location + "/" + id + name, {
 				data: JSON.stringify(data),
 				headers: {
 					"Content-Type": "application/json;charset=UTF-8",
@@ -38,8 +38,8 @@ define(["orion/xhr", "orion/plugin", "domReady!"], function(xhr, PluginProvider)
 				return result.response ? JSON.parse(result.response) : null;
 			});
 		},
-		remove: function(name, key){
-			return xhr("DELETE", this.location + name +"?key=" + encodeURIComponent(key), {
+		remove: function(id, name, key){
+			return xhr("DELETE", this.location + "/" + id + name +"?key=" + encodeURIComponent(key), {
 				headers: {
 					"Orion-Version": "1"
 				},

@@ -176,12 +176,19 @@ define([
 			// If it appears to be a workspaceRootURL we cannot load it directly, have to get the workspace first
 			var root = resource;
 			if (root.indexOf("?")) root = root.split("?")[0];
-			if (root === fileClient.fileServiceRootURL(root)) {
-				return fileClient.loadWorkspace(root).then(function(workspace) {
-					return workspace.Location;
-				});
-			}
-			return new Deferred().resolve(resource);
+//			if (root === fileClient.fileServiceRootURL(root)) {
+//				return fileClient.loadWorkspace(root).then(function(workspace) {
+//					this.workspace = workspace;
+//					return root === fileClient.fileServiceRootURL(root) ? workspace.Location : resource;
+//				}.bind(this));
+//			}
+//			return new Deferred().resolve(resource);
+
+			return fileClient.loadWorkspace(fileClient.fileServiceRootURL(root)).then(function(workspace) {
+				this.workspace = workspace;
+				return root === fileClient.fileServiceRootURL(root) ? workspace.Location : resource;
+			}.bind(this));
+//			return new Deferred().resolve(resource);
 		},
 		/**
 		 * Wrapper for fileClient.read() that tolerates a filesystem root URL passed as location. If location is indeed
@@ -207,6 +214,9 @@ define([
 				return this._lastMetadata.Parents[0].Location === parentLocation;
 			}
 			return false;
+		},
+		getWorkspace: function(){
+			return this.workspace;
 		},
 		load: function(charset, nofocus) {
 			var fileURI = this.getInput();

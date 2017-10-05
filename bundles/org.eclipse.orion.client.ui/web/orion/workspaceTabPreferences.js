@@ -19,7 +19,7 @@ define([
 ], function(objects, mCommonPreferences, util) {
 	var CommonPreferences = mCommonPreferences.CommonPreferences;
 
-	var GENERAL_SECTION = "/tabs_"; //$NON-NLS-0$
+	var GENERAL_SECTION = "/tabs"; //$NON-NLS-0$
 	var GENERAL_KEY = "tabsInfo"; //$NON-NLS-0$
 
 	var defaults = {};
@@ -33,17 +33,13 @@ define([
 			return defaults;
 		},
 		getPrefsSection: function() {
-			var workspaceId = "";
-			if(window.location.hash) {
-				workspaceId = window.location.hash.substr(1).split("/")[2];
-			}
-			return GENERAL_SECTION + workspaceId;
+			return GENERAL_SECTION;
 		},
 		getPrefsKey: function() {
 			return GENERAL_KEY;
 		},
 		getPrefs: function(callback) {
-			return this._preferences.get(this.getPrefsSection(), null, {scope:8}).then(function(prefs) {
+			return this._preferences.get(this.getPrefsSection(), null, {scope:8, workspaceId: this.workspaceId}).then(function(prefs) {
 				var object = this._initialize(prefs);
 				if (typeof object === "string") { //$NON-NLS-0$
 					object = JSON.parse(object);
@@ -57,13 +53,19 @@ define([
 		setPrefs: function(object, callback) {
 			var data = {};
 			data[this.getPrefsKey()] = object;
-			this._preferences.put(this.getPrefsSection(), data, {scope:8}).then(function() {
+			this._preferences.put(this.getPrefsSection(), data, {scope:8, workspaceId: this.workspaceId}).then(function() {
 				object = this._initialize(data);
 				if (callback) {
 					callback(object);
 				}
 				this.dispatchEvent({type: "Changed", preferences: object}); //$NON-NLS-0$
 			}.bind(this));
+		},
+		setWorkspaceId: function(workspaceId){
+			this.workspaceId = workspaceId;
+		},
+		getWorkspaceId: function(){
+			return this.workspaceId;
 		}
 	});
 	return { WorkspaceTabPreferences: WorkspaceTabPreferences };

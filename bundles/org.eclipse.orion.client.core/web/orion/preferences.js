@@ -138,9 +138,10 @@ define(['require', 'orion/Deferred', 'orion/EventTarget', 'orion/xhr'], function
 		}
 	};
 	
-	function WorkspacePreferencesProvider(serviceRegistry) {
+	function WorkspacePreferencesProvider(serviceRegistry, workspaceId) {
 		this._currentPromises = {};
 		this._cache = new Cache("/orion/preferences/workspace", 60*60); //$NON-NLS-0$
+		this._workspaceId = workspaceId;
 		
 		this._service = null;
 		this.available = function() {
@@ -171,7 +172,7 @@ define(['require', 'orion/Deferred', 'orion/EventTarget', 'orion/xhr'], function
 			} else {
 				this._currentPromises[namespace] = d;
 				var that = this;
-				this._service.get(namespace).then(function(data) {
+				this._service.get(this._workspaceId, namespace).then(function(data) {
 					data = data || {};
 					that._cache.set(namespace, data);
 					delete that._currentPromises[namespace];
@@ -193,14 +194,14 @@ define(['require', 'orion/Deferred', 'orion/EventTarget', 'orion/xhr'], function
 		
 		put: function(namespace, data) {
 			this._cache.set(namespace, data);
-			return this._service.put(namespace, data);
+			return this._service.put(this._workspaceId, namespace, data);
 		},
 		
 		remove: function(namespace, key){
 			var cached = this._cache.get(namespace);
 			delete cached[key];
 			this._cache.set(namespace, cached);
-			return this._service.remove(namespace, key);
+			return this._service.remove(this._workspaceId, namespace, key);
 		}
 	};
 
@@ -343,8 +344,9 @@ define(['require', 'orion/Deferred', 'orion/EventTarget', 'orion/xhr'], function
 	function PreferencesService(serviceRegistry, options) {
 		options = options || {};
 		this._changeListeners = [];
+		this.serviceRegistry = serviceRegistry;
 		this._userProvider = options.userProvider || new UserPreferencesProvider(serviceRegistry);
-		this._workspaceProvider = options.workspaceProvider || new WorkspacePreferencesProvider(serviceRegistry);
+		this._workspaceProvider;
 		this._localProvider = options.localProvider || new LocalPreferencesProvider();
 		this._defaultsProvider = options.defaultsProvider || new DefaultPreferencesProvider(options.defaultPreferencesLocation);
 		_EventTarget.attach(this);
@@ -394,7 +396,7 @@ define(['require', 'orion/Deferred', 'orion/EventTarget', 'orion/xhr'], function
 		 */
 		get: function(namespace, key, options) {
 			options = options || {};
-			var providers = this._getProviders(options.scope);
+			var providers = this._getProviders(options);
 			var gets = [];
 			providers.reverse().forEach(function(provider) {
 				gets.push(provider.get(namespace, options.noCache));
@@ -444,7 +446,7 @@ define(['require', 'orion/Deferred', 'orion/EventTarget', 'orion/xhr'], function
 		put: function(namespace, data, options) {
 			var that = this;
 			options = options || {};
-			var provider = this._getProviders(options.scope)[0];
+			var provider = this._getProviders(options)[0];
 			return provider.get(namespace).then(function(store) {
 				var newStore = data;
 				if (!options.clear) {
@@ -471,7 +473,7 @@ define(['require', 'orion/Deferred', 'orion/EventTarget', 'orion/xhr'], function
 		 */
 		remove: function(namespace, key, options) {
 			options = options || {};
-			var provider = this._getProviders(options.scope)[0];
+			var provider = this._getProviders(options)[0];
 			return provider.get(namespace).then(function(store) {
 				function deleteKey(key) {
 					if (key in store) {
@@ -494,7 +496,8 @@ define(['require', 'orion/Deferred', 'orion/EventTarget', 'orion/xhr'], function
 		/**
 		 * @private
 		 */
-		_getProviders: function(optScope) {
+		_getProviders: function(options) {
+			var optScope = options.scope;
 			if (!optScope || typeof(optScope) !== "number" || optScope > 8 || optScope < 1) { //$NON-NLS-0$
 				optScope = PreferencesService.DEFAULT_SCOPE;
 				optScope |= this._userProvider.available() ? PreferencesService.USER_SCOPE : PreferencesService.LOCAL_SCOPE;
@@ -509,8 +512,11 @@ define(['require', 'orion/Deferred', 'orion/EventTarget', 'orion/xhr'], function
 			if (PreferencesService.DEFAULT_SCOPE & optScope) {
 				providers.push(this._defaultsProvider);
 			}
-			if ((PreferencesService.WORKSPACE_SCOPE & optScope) && this._workspaceProvider.available()) {
-				providers.push(this._workspaceProvider);
+			if (PreferencesService.WORKSPACE_SCOPE & optScope) {
+				this._workspaceProvider = new WorkspacePreferencesProvider(this.serviceRegistry, options.workspaceId);
+				if(this._workspaceProvider.available()) {
+					providers.push(this._workspaceProvider);
+				}
 			}
 			return providers;
 		},
